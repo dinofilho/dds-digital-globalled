@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DDS Digital | GLOBALLED SST</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+<style>
+body{margin:0;font-family:Arial,sans-serif;background:#061f21;color:white;padding:18px}
+.container{max-width:900px;margin:auto;background:#0b2d30;padding:22px;border-radius:22px;box-shadow:0 0 25px rgba(0,255,180,.25)}
+.logo{display:block;margin:0 auto 15px;max-width:130px;border-radius:18px}
+h1{text-align:center;color:#00ffae}
+label{font-weight:bold;margin-top:12px;display:block}
+input,select,textarea{width:100%;padding:14px;margin-top:7px;border:1px solid #146b65;border-radius:12px;background:#103c3f;color:white;font-size:16px;box-sizing:border-box}
+textarea{min-height:130px}
+button{width:100%;padding:16px;margin-top:15px;border:none;border-radius:12px;background:#009b68;color:white;font-size:17px;font-weight:bold}
+.btn2{background:#004aad}
+.btn3{background:#8b0000}
+.card{background:#082426;border:1px solid #146b65;border-radius:18px;padding:16px;margin-top:18px}
+canvas{background:white;border-radius:12px;width:100%;height:180px}
+.participante{border:1px solid #146b65;padding:12px;border-radius:12px;margin-top:10px}
+.pdf{background:white;color:#111;padding:25px;border-radius:12px}
+.pdf h1,.pdf h2{color:#004d40}
+.small{font-size:13px;color:#cde}
+</style>
+</head>
+
+<body>
+<div class="container">
+
+<img class="logo" src="https://globalledsst.com.br/img/logo.png">
+
+<h1>DDS DIGITAL GLOBALLED SST</h1>
+<p style="text-align:center">Diálogo Diário de Segurança com registro, assinatura e geração de PDF.</p>
+
+<div class="card">
+<label>Empresa</label>
+<input id="empresa" placeholder="Nome da empresa">
+
+<label>CNPJ</label>
+<input id="cnpj" placeholder="CNPJ">
+
+<label>Setor / Local</label>
+<input id="setor" placeholder="Setor ou local da atividade">
+
+<label>Responsável pelo DDS</label>
+<input id="responsavel" placeholder="Nome do responsável">
+
+<label>Função do responsável</label>
+<input id="funcaoResp" placeholder="Função">
+
+<label>Tema do DDS</label>
+<select id="tema" onchange="carregarTema()">
+<option value="">Selecione o tema</option>
+<option>Uso correto de EPI</option>
+<option>Trabalho em altura NR-35</option>
+<option>Eletricidade NR-10</option>
+<option>Espaço confinado NR-33</option>
+<option>Máquinas e equipamentos NR-12</option>
+<option>Inflamáveis NR-20</option>
+<option>Ergonomia</option>
+<option>Incêndio e emergência</option>
+<option>Ordem e limpeza</option>
+<option>Direção defensiva</option>
+<option>Produtos químicos</option>
+<option>Quase acidente</option>
+<option>Riscos psicossociais</option>
+<option>Outro</option>
+</select>
+
+<label>Conteúdo do DDS</label>
+<textarea id="conteudo"></textarea>
+
+<label>Medidas preventivas / Orientações</label>
+<textarea id="medidas" placeholder="Descreva as principais orientações dadas aos colaboradores"></textarea>
+</div>
+
+<div class="card">
+<h2>Participantes</h2>
+<div id="participantes"></div>
+<button onclick="addParticipante()">+ ADICIONAR COLABORADOR</button>
+</div>
+
+<div class="card">
+<h2>Assinatura do responsável</h2>
+<canvas id="assinatura"></canvas>
+<button class="btn3" onclick="limparAssinatura()">LIMPAR ASSINATURA</button>
+</div>
+
+<button onclick="gerarPDF()">GERAR PDF DO DDS</button>
+<button class="btn2" onclick="enviarWhatsApp()">ENVIAR RESUMO PELO WHATSAPP</button>
+
+<div id="areaPDF" style="display:none"></div>
+
+</div>
+
+<script>
+const textos={
+"Uso correto de EPI":"O uso correto dos Equipamentos de Proteção Individual é fundamental para reduzir riscos de acidentes e doenças ocupacionais. Cada colaborador deve utilizar o EPI adequado à atividade, conservar o equipamento, comunicar danos e seguir as orientações da empresa.",
+"Trabalho em altura NR-35":"Toda atividade realizada acima de 2 metros com risco de queda exige planejamento, análise prévia, uso correto de cinto de segurança, talabarte, ancoragem adequada e autorização para execução. A atenção deve ser constante.",
+"Eletricidade NR-10":"Atividades com eletricidade exigem profissionais capacitados, bloqueio de energia, ferramentas adequadas, ausência de improvisos e respeito aos procedimentos de segurança.",
+"Espaço confinado NR-33":"Antes de acessar espaço confinado, é necessário avaliar atmosfera, ventilação, comunicação, permissão de entrada, vigia e plano de emergência.",
+"Máquinas e equipamentos NR-12":"Máquinas devem possuir proteções, dispositivos de segurança e operação segura. É proibido remover proteções ou realizar manutenção sem bloqueio.",
+"Inflamáveis NR-20":"Ambientes com inflamáveis exigem controle de fontes de ignição, aterramento, sinalização, ventilação, procedimentos seguros e atenção redobrada.",
+"Ergonomia":"A ergonomia busca adaptar o trabalho ao colaborador, prevenindo dores, fadiga, esforços repetitivos e afastamentos. Pausas e postura adequada são essenciais.",
+"Incêndio e emergência":"Todos devem conhecer rotas de fuga, pontos de encontro, uso básico de extintores e procedimentos em caso de emergência.",
+"Ordem e limpeza":"Ambiente limpo e organizado reduz quedas, acidentes, perdas de materiais e melhora a produtividade.",
+"Direção defensiva":"Dirigir com segurança envolve atenção, respeito aos limites, distância segura, manutenção do veículo e prevenção de atitudes de risco.",
+"Produtos químicos":"Produtos químicos devem ser manuseados com EPI adequado, identificação correta, leitura da FISPQ e armazenamento seguro.",
+"Quase acidente":"Quase acidente é um alerta. Deve ser comunicado para prevenir ocorrências graves no futuro.",
+"Riscos psicossociais":"Pressão excessiva, assédio, conflitos, sobrecarga e falta de apoio podem afetar a saúde mental. A comunicação segura e o respeito são fundamentais."
+};
+
+function carregarTema(){
+let t=document.getElementById("tema").value;
+document.getElementById("conteudo").value=textos[t]||"";
+}
+
+let total=0;
+function addParticipante(){
+total++;
+let div=document.createElement("div");
+div.className="participante";
+div.innerHTML=`
+<label>Nome do colaborador ${total}</label>
+<input class="nomePart" placeholder="Nome completo">
+<label>Função</label>
+<input class="funcPart" placeholder="Função">
+<label><input type="checkbox" class="ciente"> Declaro que participei do DDS e estou ciente das orientações.</label>
+`;
+document.getElementById("participantes").appendChild(div);
+}
+addParticipante();
+
+const canvas=document.getElementById("assinatura");
+const ctx=canvas.getContext("2d");
+let desenhando=false;
+function resize(){canvas.width=canvas.offsetWidth;canvas.height=180}
+resize(); window.onresize=resize;
+
+function pos(e){
+let r=canvas.getBoundingClientRect();
+let x=(e.touches?e.touches[0].clientX:e.clientX)-r.left;
+let y=(e.touches?e.touches[0].clientY:e.clientY)-r.top;
+return{x,y};
+}
+canvas.onmousedown=canvas.ontouchstart=e=>{desenhando=true;let p=pos(e);ctx.beginPath();ctx.moveTo(p.x,p.y);e.preventDefault()}
+canvas.onmousemove=canvas.ontouchmove=e=>{if(!desenhando)return;let p=pos(e);ctx.lineTo(p.x,p.y);ctx.stroke();e.preventDefault()}
+canvas.onmouseup=canvas.onmouseleave=canvas.ontouchend=()=>desenhando=false;
+function limparAssinatura(){ctx.clearRect(0,0,canvas.width,canvas.height)}
+
+async function gerarPDF(){
+const {jsPDF}=window.jspdf;
+let nomes=[...document.querySelectorAll(".nomePart")];
+let funcoes=[...document.querySelectorAll(".funcPart")];
+let cientes=[...document.querySelectorAll(".ciente")];
+
+let lista="";
+nomes.forEach((n,i)=>{
+lista+=`<tr><td>${i+1}</td><td>${n.value}</td><td>${funcoes[i].value}</td><td>${cientes[i].checked?"Ciente":"Não marcado"}</td></tr>`;
+});
+
+let hoje=new Date().toLocaleString("pt-BR");
+let assinatura=canvas.toDataURL();
+
+document.getElementById("areaPDF").style.display="block";
+document.getElementById("areaPDF").innerHTML=`
+<div class="pdf" id="pdfFinal">
+<h1>DDS DIGITAL - GLOBALLED SST</h1>
+<p><b>Data:</b> ${hoje}</p>
+<p><b>Empresa:</b> ${empresa.value}</p>
+<p><b>CNPJ:</b> ${cnpj.value}</p>
+<p><b>Setor:</b> ${setor.value}</p>
+<p><b>Responsável:</b> ${responsavel.value} - ${funcaoResp.value}</p>
+<h2>Tema</h2>
+<p>${tema.value}</p>
+<h2>Conteúdo</h2>
+<p>${conteudo.value}</p>
+<h2>Medidas preventivas</h2>
+<p>${medidas.value}</p>
+<h2>Participantes</h2>
+<table border="1" width="100%" cellspacing="0" cellpadding="6">
+<tr><th>Nº</th><th>Nome</th><th>Função</th><th>Ciência</th></tr>
+${lista}
+</table>
+<h2>Assinatura do responsável</h2>
+<img src="${assinatura}" style="width:350px;border:1px solid #ccc">
+<p class="small">Documento gerado digitalmente pelo sistema DDS Digital GLOBALLED SST.</p>
+</div>`;
+
+let elemento=document.getElementById("pdfFinal");
+let canvasPDF=await html2canvas(elemento,{scale:2});
+let img=canvasPDF.toDataURL("image/png");
+let pdf=new jsPDF("p","mm","a4");
+let largura=210;
+let altura=canvasPDF.height*largura/canvasPDF.width;
+pdf.addImage(img,"PNG",0,0,largura,altura);
+pdf.save("DDS-Digital-Globalled.pdf");
+}
+
+function enviarWhatsApp(){
+let msg=`DDS DIGITAL GLOBALLED SST%0A%0AEmpresa: ${empresa.value}%0ATema: ${tema.value}%0AResponsável: ${responsavel.value}%0AData: ${new Date().toLocaleString("pt-BR")}%0A%0ARegistro realizado pelo DDS Digital.`;
+window.open(`https://wa.me/551433224141?text=${msg}`,"_blank");
+}
+</script>
+
+</body>
+</html>
